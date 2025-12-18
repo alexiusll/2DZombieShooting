@@ -6,6 +6,8 @@ using UnityEngine.InputSystem; // 需要引入 InputSystem 库
 
 public class PlayerMovement : MonoBehaviour
 {
+    public static PlayerMovement instance;
+
     // 这是一个属性特性，在 Unity 中使用它可以让私有变量在 Unity 编辑器中显示为可编辑的字段。
     // 这意味着，即使 speed 是私有的，它也可以在 Unity 编辑器的 Inspector 窗口中显示并编辑。
     [SerializeField] private int speed = 5;
@@ -16,14 +18,28 @@ public class PlayerMovement : MonoBehaviour
 
     public GameObject UI;
 
-    private bool canMove = true;
+    [HideInInspector]
+    public bool canMove = true;
 
     // 加载脚本示例的时候调用
     private void Awake()
     {
-        
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
+
+        // 设置单例
+        if (instance == null)
+        {
+            instance = this;
+        }
+        else
+        {
+            Debug.LogError("创建了2个 PlayerMovement 对象");
+            if (instance != this)
+            {
+                Destroy(gameObject);
+            }
+        }
     }
 
     private void OnOpenMenu(InputValue value)
@@ -67,28 +83,33 @@ public class PlayerMovement : MonoBehaviour
     // 用于物理运动，固定帧调用
     private void FixedUpdate()
     {
-        // 方法一 velocity
-        // 需要设置 linear drag 摩擦力, 否则玩家不会停下来
-        // 但是这种方式可能不够线性,因为玩家一开始被施加很大的速度
-        //if (movement.x != 0 || movement.y != 0)
-        //{
-        //    // 刚体的 线性速度
-        //    rb.velocity = movement * speed;
-        //}
+        if (canMove)
+        {
+            // 方法一 velocity
+            // 需要设置 linear drag 摩擦力, 否则玩家不会停下来
+            // 但是这种方式可能不够线性,因为玩家一开始被施加很大的速度
+            //if (movement.x != 0 || movement.y != 0)
+            //{
+            //    // 刚体的 线性速度
+            //    rb.velocity = movement * speed;
+            //}
 
-        // 方法二 MovePosition ,可能不够物理?
+            // 方法二 MovePosition ,可能不够物理?
 
-        // 将向量标准化，避免水平位移和斜方向位移速度不同的问题（似乎本身就不会有这个问题...)
-        Vector2 movementNorm = movement.normalized;
+            // 将向量标准化，避免水平位移和斜方向位移速度不同的问题（似乎本身就不会有这个问题...)
+            Vector2 movementNorm = movement.normalized;
+            rb.MovePosition(rb.position + movementNorm * speed * Time.fixedDeltaTime);
+            // Time.fixedDeltaTime 的值就等于 0.02
+            // Debug.Log("FixedDeltaTime: " + Time.fixedDeltaTime);
+            // Debug.Log("movementNorm: " + movementNorm.ToString());
 
-        rb.MovePosition(rb.position + movementNorm * speed * Time.fixedDeltaTime);
-        // Time.fixedDeltaTime 的值就等于 0.02
-        // Debug.Log("FixedDeltaTime: " + Time.fixedDeltaTime);
-
-        // Debug.Log("movementNorm: " + movementNorm.ToString());
-
-        // 方法三 施加一个力
-        // rb.AddForce(movement * speed);
+            // 方法三 施加一个力
+            // rb.AddForce(movement * speed);
+        }
+        else
+        {
+            animator.SetBool("IsWalking", false);
+        }
     }
 
     // Start is called before the first frame update
